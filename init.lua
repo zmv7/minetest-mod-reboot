@@ -23,43 +23,39 @@
 
 local reboot = false
 
-local checkReboot
-
-checkReboot = function()
-    if reboot and next(minetest.get_connected_players()) == nil then
-        -- Time to reboot
+local function checkReboot()
+    if not reboot then return end
+    if not next(minetest.get_connected_players()) then
         if minetest.global_exists('irc') then
             irc.say("The server is empty! Rebooting...")
         end
-        minetest.request_shutdown("Rebooting...", true, 1)
+        minetest.chat_send_all('Rebooting by schedule')
+        minetest.request_shutdown("Rebooting", true, 1)
     end
 end
 
-minetest.register_on_leaveplayer(checkReboot)
+minetest.register_on_leaveplayer(function()
+    minetest.after(1,function() --important thing
+        checkReboot()
+    end)
+end)
 
 minetest.register_chatcommand("reboot", {
     privs = {server = true},
-    params = "",
-    description = "Reboots the server next time it is empty.",
-    func = function()
+    params = "[-f]/[-c]", --params instead of cancelreboot command
+    description = "Reboots the server next time it is empty. `-c` -cancel, `-f` - force",
+    func = function(name,param)
+        if param == '-f' then
+            minetest.request_shutdown("Rebooting...", true, 5)
+            return true, 'Force Rebooting!' end
+        if param == '-c' then
+            reboot = false
+            return true, 'Scheduled Reboot canceled' end
         if reboot then
             return false, "There is already a reboot pending!"
         end
         reboot = true
         checkReboot()
-        return true, "Reboot scheduled!"
-    end
-})
-
-minetest.register_chatcommand("cancelreboot", {
-    privs = {server = true},
-    params = "",
-    description = "Cancels a pending reboot.",
-    func = function()
-        if not reboot then
-            return false, "There is no reboot to cancel!"
-        end
-        reboot = false
-        return true, "Reboot aborted!"
+        return true, "Reboot scheduled"
     end
 })
