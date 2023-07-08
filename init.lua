@@ -52,6 +52,7 @@ minetest.register_chatcommand("reboot", {
             return true, "Forced Reboot!" end
         if flag == "-c" or param == "-c" then
             reboot = false
+            minetest.cancel_shutdown_requests()
             return true, "Scheduled Reboot canceled" end
         if reboot then
             return false, "There is already a reboot pending!"
