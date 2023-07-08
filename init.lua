@@ -21,40 +21,43 @@
 -- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 -- SOFTWARE.
 
-local reboot = false
+local reboot
+local message
 
 local function checkReboot()
     if not reboot then return end
     if not next(minetest.get_connected_players()) then
-        if minetest.global_exists('irc') then
-            irc.say("The server is empty! Rebooting...")
+        if minetest.global_exists("irc") then
+            irc.say("Rebooting by schedule"..(message and " | "..message or ""))
         end
-        minetest.chat_send_all('Rebooting by schedule')
-        minetest.request_shutdown("Rebooting", true, 1)
+        minetest.chat_send_all("Rebooting by schedule"..(message and " | "..message or ""))
+        minetest.request_shutdown((message and message or "Rebooting"), true, 1)
     end
 end
 
 minetest.register_on_leaveplayer(function()
-    minetest.after(1,function() --important thing
+    minetest.after(1,function()
         checkReboot()
     end)
 end)
 
 minetest.register_chatcommand("reboot", {
     privs = {server = true},
-    params = "[-f]/[-c]", --params instead of cancelreboot command
+    params = "[-f]/[-c] [message]",
     description = "Reboots the server next time it is empty. `-c` -cancel, `-f` - force",
     func = function(name,param)
-        if param == '-f' then
-            minetest.request_shutdown("Rebooting...", true, 5)
-            return true, 'Force Rebooting!' end
-        if param == '-c' then
+        local flag, msg = param:match("^(%-%S) (.+)$")
+        if flag == "-f" or param == "-f" then
+            minetest.request_shutdown((msg and msg or "Rebooting..."), true, 5)
+            return true, "Forced Reboot!" end
+        if flag == "-c" or param == "-c" then
             reboot = false
-            return true, 'Scheduled Reboot canceled' end
+            return true, "Scheduled Reboot canceled" end
         if reboot then
             return false, "There is already a reboot pending!"
         end
         reboot = true
+        message = msg or param
         checkReboot()
         return true, "Reboot scheduled"
     end
